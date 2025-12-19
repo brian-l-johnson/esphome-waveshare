@@ -561,7 +561,7 @@ display:
         const int MAX_EVENTS = 16;  // More events in landscape mode
 
         // Footer
-        const int FOOTER_Y = SCREEN_HEIGHT - 20;
+        const int FOOTER_Y = SCREEN_HEIGHT - 25;
 
       //# Print Weather Section (Left Panel)
         App.feed_wdt();  // Feed watchdog at start of weather section
