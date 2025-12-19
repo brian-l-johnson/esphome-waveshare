@@ -506,35 +506,15 @@ display:
         int active_alert_count = 0;
         int total_alert_height = 0;
 
-        // Check how many alerts are active
-        if (id(weather_alert_1).has_state()) {
-          std::string title = id(weather_alert_1).state;
-          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
-            active_alert_count++;
-          }
-        }
-        if (id(weather_alert_2).has_state()) {
-          std::string title = id(weather_alert_2).state;
-          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
-            active_alert_count++;
-          }
-        }
-        if (id(weather_alert_3).has_state()) {
-          std::string title = id(weather_alert_3).state;
-          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
-            active_alert_count++;
-          }
-        }
-        if (id(weather_alert_4).has_state()) {
-          std::string title = id(weather_alert_4).state;
-          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
-            active_alert_count++;
-          }
-        }
-        if (id(weather_alert_5).has_state()) {
-          std::string title = id(weather_alert_5).state;
-          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
-            active_alert_count++;
+        // Check the alert count sensor from Home Assistant
+        if (id(weather_alerts_count).has_state()) {
+          std::string count_str = id(weather_alerts_count).state;
+          // Parse the count - only show alerts if count is a positive number
+          if (count_str.length() > 0 && count_str != "unavailable" && count_str != "unknown") {
+            active_alert_count = atoi(count_str.c_str());
+            if (active_alert_count < 0) {
+              active_alert_count = 0;
+            }
           }
         }
 
@@ -590,11 +570,21 @@ display:
         App.feed_wdt();  // Feed watchdog before alerts section
         if (active_alert_count > 0) {
           int alert_y_pos = ALERT_Y;
+          int alerts_drawn = 0;
 
-          // Helper lambda to draw an alert
-          auto draw_alert = [&](esphome::text_sensor::TextSensor* alert_sensor) {
-            if (alert_sensor->has_state()) {
-              std::string title = alert_sensor->state;
+          // Array of alert sensors for easier iteration
+          esphome::text_sensor::TextSensor* alert_sensors[] = {
+            id(weather_alert_1),
+            id(weather_alert_2),
+            id(weather_alert_3),
+            id(weather_alert_4),
+            id(weather_alert_5)
+          };
+
+          // Draw only the number of alerts specified by active_alert_count
+          for (int i = 0; i < 5 && alerts_drawn < active_alert_count; i++) {
+            if (alert_sensors[i]->has_state()) {
+              std::string title = alert_sensors[i]->state;
               if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
                 App.feed_wdt();  // Feed watchdog
 
@@ -609,16 +599,10 @@ display:
 
                 // Move to next alert position
                 alert_y_pos += ALERT_BASE_HEIGHT + 2;
+                alerts_drawn++;
               }
             }
-          };
-
-          // Draw all active alerts
-          draw_alert(id(weather_alert_1));
-          draw_alert(id(weather_alert_2));
-          draw_alert(id(weather_alert_3));
-          draw_alert(id(weather_alert_4));
-          draw_alert(id(weather_alert_5));
+          }
         }
 
       //# Print 3-Day Forecast Section - Left Panel (3 columns)
