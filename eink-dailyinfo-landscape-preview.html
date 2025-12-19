@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Ink Daily Info Landscape Display Preview</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        .display-container {
+            background: white;
+            width: 800px;
+            height: 480px;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 2px solid #000;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            position: relative;
+            display: flex;
+        }
+
+        /* Vertical divider */
+        .divider-vertical {
+            position: absolute;
+            left: 400px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #000;
+        }
+
+        /* Left Panel - Weather */
+        .left-panel {
+            width: 400px;
+            position: relative;
+        }
+
+        .day {
+            position: absolute;
+            top: 15px;
+            left: 200px;
+            transform: translateX(-50%);
+            font-size: 54px;
+            font-weight: bold;
+        }
+
+        .date {
+            position: absolute;
+            top: 65px;
+            left: 200px;
+            transform: translateX(-50%);
+            font-size: 54px;
+            font-weight: bold;
+        }
+
+        .weather-icon {
+            position: absolute;
+            top: 115px;
+            left: 200px;
+            transform: translateX(-50%);
+            font-size: 96px;
+        }
+
+        .temperature {
+            position: absolute;
+            top: 220px;
+            left: 200px;
+            transform: translateX(-50%);
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .forecast-title {
+            position: absolute;
+            top: 250px;
+            left: 200px;
+            transform: translateX(-50%);
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .forecast-col {
+            position: absolute;
+            text-align: center;
+        }
+
+        .forecast-col.col-1 { left: 70px; transform: translateX(-50%); }
+        .forecast-col.col-2 { left: 200px; transform: translateX(-50%); }
+        .forecast-col.col-3 { left: 330px; transform: translateX(-50%); }
+
+        .forecast-day { position: absolute; top: 275px; font-size: 18px; font-weight: bold; }
+        .forecast-icon { position: absolute; top: 293px; font-size: 36px; }
+        .forecast-high { position: absolute; top: 328px; font-size: 18px; font-weight: bold; }
+        .forecast-low { position: absolute; top: 346px; font-size: 18px; }
+        .forecast-precip { position: absolute; top: 362px; font-size: 18px; }
+
+        /* Right Panel - Events */
+        .right-panel {
+            width: 400px;
+            position: relative;
+            margin-left: 400px;
+        }
+
+        .events-title {
+            position: absolute;
+            top: 15px;
+            left: 200px;
+            transform: translateX(-50%);
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .event {
+            position: absolute;
+            left: 20px;
+            font-size: 18px;
+        }
+
+        .event.e1 { top: 50px; }
+        .event.e2 { top: 72px; }
+        .event.e3 { top: 94px; }
+        .event.e4 { top: 116px; }
+        .event.e5 { top: 138px; }
+        .event.e6 { top: 160px; }
+
+        /* Footer - Right Panel */
+        .update-time {
+            position: absolute;
+            bottom: 20px;
+            left: 600px;
+            transform: translateX(-50%);
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="display-container">
+        <div class="screen">
+            <!-- Vertical Divider -->
+            <div class="divider-vertical"></div>
+
+            <!-- Left Panel - Weather -->
+            <div class="left-panel">
+                <div class="day">Sun</div>
+                <div class="date">Dec 15</div>
+                <div class="weather-icon">☀️</div>
+                <div class="temperature">45.3 °F</div>
+
+                <!-- Forecast Section -->
+                <div class="forecast-title">3-DAY FORECAST</div>
+
+                <!-- Today -->
+                <div class="forecast-col col-1">
+                    <div class="forecast-day">Today</div>
+                    <div class="forecast-icon">🌤️</div>
+                    <div class="forecast-high">52°</div>
+                    <div class="forecast-low">38°</div>
+                    <div class="forecast-precip">20%</div>
+                </div>
+
+                <!-- Tomorrow -->
+                <div class="forecast-col col-2">
+                    <div class="forecast-day">Mon</div>
+                    <div class="forecast-icon">☁️</div>
+                    <div class="forecast-high">48°</div>
+                    <div class="forecast-low">35°</div>
+                    <div class="forecast-precip">40%</div>
+                </div>
+
+                <!-- Day 3 -->
+                <div class="forecast-col col-3">
+                    <div class="forecast-day">Tue</div>
+                    <div class="forecast-icon">🌧️</div>
+                    <div class="forecast-high">45°</div>
+                    <div class="forecast-low">32°</div>
+                    <div class="forecast-precip">80%</div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Events -->
+            <div class="right-panel">
+                <div class="events-title">TODAY'S EVENTS</div>
+                <div class="event e1">• 9:00-10:00 Team Meeting</div>
+                <div class="event e2">11:00-12:00 Client Call</div>
+                <div class="event e3">1:00-2:30 Project Review</div>
+                <div class="event e4">3:00-4:00 Development Work</div>
+                <div class="event e5">5:00-6:00 Dinner</div>
+                <div class="event e6">7:00-8:00 Family Time</div>
+            </div>
+
+            <!-- Footer -->
+            <div class="update-time">Last updated: 14:23</div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Ink Daily Info Display Preview</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        .display-container {
+            background: white;
+            width: 480px;
+            height: 800px;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 2px solid #000;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            position: relative;
+        }
+
+        /* Day and Date */
+        .day {
+            position: absolute;
+            top: 64px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 54px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .date {
+            position: absolute;
+            top: 128px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 54px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Current Weather Icon */
+        .weather-icon {
+            position: absolute;
+            top: 196px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 96px;
+            text-align: center;
+        }
+
+        /* Current Temperature */
+        .temperature {
+            position: absolute;
+            top: 290px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 30px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Weather Alert Section */
+        .alert-box {
+            position: absolute;
+            top: 325px;
+            left: 60px;
+            right: 60px;
+            height: 25px;
+            background: #f00;
+            display: flex;
+            align-items: center;
+            padding-left: 20px;
+        }
+
+        .alert-icon {
+            font-size: 18px;
+            color: #fff;
+            margin-right: 5px;
+        }
+
+        .alert-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        /* Forecast Section */
+        .divider {
+            position: absolute;
+            top: 360px;
+            left: 60px;
+            right: 60px;
+            height: 2px;
+            background: #000;
+        }
+
+        .forecast-title {
+            position: absolute;
+            top: 375px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Forecast columns */
+        .forecast-col {
+            position: absolute;
+            text-align: center;
+        }
+
+        .forecast-col.col-1 {
+            left: 120px;
+            transform: translateX(-50%);
+        }
+
+        .forecast-col.col-2 {
+            left: 240px;
+            transform: translateX(-50%);
+        }
+
+        .forecast-col.col-3 {
+            left: 360px;
+            transform: translateX(-50%);
+        }
+
+        .forecast-day {
+            position: absolute;
+            top: 405px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .forecast-icon {
+            position: absolute;
+            top: 425px;
+            font-size: 36px;
+        }
+
+        .forecast-high {
+            position: absolute;
+            top: 475px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .forecast-low {
+            position: absolute;
+            top: 495px;
+            font-size: 18px;
+        }
+
+        .forecast-precip {
+            position: absolute;
+            top: 513px;
+            font-size: 18px;
+        }
+
+        /* Events Section */
+        .events-divider {
+            position: absolute;
+            top: 540px;
+            left: 60px;
+            right: 60px;
+            height: 2px;
+            background: #000;
+        }
+
+        .events-section-title {
+            position: absolute;
+            top: 550px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .event {
+            position: absolute;
+            left: 70px;
+            font-size: 18px;
+        }
+
+        .event.today1 { top: 580px; }
+        .event.today2 { top: 602px; }
+
+        .events-tomorrow-title {
+            position: absolute;
+            top: 629px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .event.tomorrow1 { top: 654px; }
+        .event.tomorrow2 { top: 676px; }
+
+        /* Update timestamp */
+        .update-time {
+            position: absolute;
+            top: 710px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="display-container">
+        <div class="screen">
+            <!-- Current Weather Section -->
+            <div class="day">Sun</div>
+            <div class="date">Dec 15</div>
+            <div class="weather-icon">☀️</div>
+            <div class="temperature">45.3 °F</div>
+
+            <!-- Weather Alert -->
+            <div class="alert-box">
+                <div class="alert-icon">⚠️</div>
+                <div class="alert-text">Winter Storm Warning</div>
+            </div>
+
+            <!-- Forecast Section -->
+            <div class="divider"></div>
+            <div class="forecast-title">3-DAY FORECAST</div>
+
+            <!-- Today -->
+            <div class="forecast-col col-1">
+                <div class="forecast-day">Today</div>
+                <div class="forecast-icon">🌤️</div>
+                <div class="forecast-high">52°</div>
+                <div class="forecast-low">38°</div>
+                <div class="forecast-precip">20%</div>
+            </div>
+
+            <!-- Tomorrow -->
+            <div class="forecast-col col-2">
+                <div class="forecast-day">Mon</div>
+                <div class="forecast-icon">☁️</div>
+                <div class="forecast-high">48°</div>
+                <div class="forecast-low">35°</div>
+                <div class="forecast-precip">40%</div>
+            </div>
+
+            <!-- Day 3 -->
+            <div class="forecast-col col-3">
+                <div class="forecast-day">Tue</div>
+                <div class="forecast-icon">🌧️</div>
+                <div class="forecast-high">45°</div>
+                <div class="forecast-low">32°</div>
+                <div class="forecast-precip">80%</div>
+            </div>
+
+            <!-- Events Section -->
+            <div class="events-divider"></div>
+            <div class="events-section-title">TODAY</div>
+            <div class="event today1">9:00-10:00 Team Meeting</div>
+            <div class="event today2">11:00-12:00 Client Call</div>
+
+            <div class="events-tomorrow-title">TOMORROW</div>
+            <div class="event tomorrow1">9:00-10:00 Project Review</div>
+            <div class="event tomorrow2">2:00-3:00 Development Work</div>
+
+            <!-- Update timestamp -->
+            <div class="update-time">Last updated: 14:23</div>
+        </div>
+    </div>
+</body>
+</html>

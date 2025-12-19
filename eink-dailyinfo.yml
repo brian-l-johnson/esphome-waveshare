@@ -1,0 +1,785 @@
+## My take of Weatherman dashboard from Madelena
+
+# WEATHERMAN DASHBOARD
+#  For Home Assistant and ESPHome
+# Designed by Madelena Mak 2022 - https://mmak.es
+
+# Cue "Blame it on the Weatherman" by B*Witched!
+
+# Load secrets from secrets.yaml
+substitutions:
+  <<: !include secrets.yaml
+
+esphome:
+  name: "eink-dailyinfo"
+  on_boot:
+      priority: 200.0
+      then:
+        - component.update: eink_display
+        - wait_until:
+            condition:
+              lambda: 'return id(data_updated) == true;'
+              # Wait a bit longer so all the items are received
+        - delay: 5s
+        - logger.log: "Initial sensor data received: Refreshing display..."
+        - lambda: 'id(initial_data_received) = true;'
+        - script.execute: update_screen
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+
+
+# Creates buttons in Home Assistant to
+button:
+  - platform: shutdown
+    name: "Weatherman - Shutdown"
+  - platform: restart
+    name: "Weatherman - Restart"
+  - platform: template
+    name: "Weatherman - Refresh Screen"
+    entity_category: config
+    on_press:
+      - script.execute: update_screen
+      
+      
+# Global variables for detecting if the display needs to be refreshed. (Thanks @paviro!)
+globals:
+  - id: data_updated
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: initial_data_received
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: recorded_display_refresh
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+
+# Script for updating screen - Refresh display and publish refresh count and time. (Thanks @paviro!)
+script:
+  - id: update_screen
+    then:
+      - lambda: 'id(data_updated) = false;'
+      - component.update: eink_display
+      - lambda: 'id(recorded_display_refresh) += 1;'
+      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'
+      
+
+# Check whether the display needs to be refreshed every minute,
+# based on whether new data is received or motion is detected. (Thanks @paviro!)
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    on_time:
+      - seconds: 0
+        minutes: /1
+        then:
+          - if:
+              condition:
+                lambda: 'return id(data_updated) == true;'
+              then:
+                 - logger.log: "Sensor data updated and activity in home detected: Refreshing display..."
+                 - script.execute: update_screen
+
+
+# Wifi information
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password  
+
+
+
+# Include custom fonts
+font:
+  - file: 'fonts/GothamRnd-Book.ttf'
+    id: font_small_book
+    size: 18
+    #glyphs: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Å', 'Ä', 'Ö', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', '-', ' ', '°', '.','m', '%']
+  - file: 'fonts/GothamRnd-Bold.ttf'
+    id: font_large_bold
+    size: 108
+    #glyphs: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Å', 'Ä', 'Ö', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', '-', ' ', '°', '.', '%']
+  - file: 'fonts/GothamRnd-Bold.ttf'
+    id: font_title
+    size: 54
+    #glyphs: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Å', 'Ä', 'Ö', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', '-', ' ', '°', '.', '%', ',']
+  - file: 'fonts/GothamRnd-Bold.ttf'
+    id: font_medium_bold
+    size: 30
+    #glyphs: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Å', 'Ä', 'Ö', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', '-', ' ', '°', '.', '%']
+  - file: 'fonts/GothamRnd-Bold.ttf'
+    id: font_small_bold
+    size: 18
+    #glyphs: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Å', 'Ä', 'Ö', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', '-', ' ', '°', '.', '%']
+
+
+  # Include Material Design Icons font
+  # Thanks to https://community.home-assistant.io/t/display-materialdesign-icons-on-esphome-attached-to-screen/199790/16
+  - file: 'fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_large
+    size: 96
+    glyphs: &mdi-weather-glyphs
+      - "\U000F0590" # weather-cloudy
+      - "\U000F0F2F" # weather-cloudy-alert
+      - "\U000F0E6E" # weather-cloudy-arrow-right
+      - "\U000F18F6" # weather-cloudy-clock
+      - "\U000F0591" # weather-fog
+      - "\U000F0592" # weather-hail
+      - "\U000F0F30" # weather-hazy
+      - "\U000F0898" # weather-hurricane
+      - "\U000F0593" # weather-lightning
+      - "\U000F067E" # weather-lightning-rainy
+      - "\U000F0594" # weather-night
+      - "\U000F0F31" # weather-night-partly-cloudy
+      - "\U000F0595" # weather-partly-cloudy
+      - "\U000F0F32" # weather-partly-lightning
+      - "\U000F0F33" # weather-partly-rainy
+      - "\U000F0F34" # weather-partly-snowy
+      - "\U000F0F35" # weather-partly-snowy-rainy
+      - "\U000F0596" # weather-pouring
+      - "\U000F0597" # weather-rainy
+      - "\U000F0598" # weather-snowy
+      - "\U000F0F36" # weather-snowy-heavy
+      - "\U000F067F" # weather-snowy-rainy
+      - "\U000F0599" # weather-sunny
+      - "\U000F0F37" # weather-sunny-alert
+      - "\U000F14E4" # weather-sunny-off
+      - "\U000F059A" # weather-sunset
+      - "\U000F059B" # weather-sunset-down
+      - "\U000F059C" # weather-sunset-up
+      - "\U000F0F38" # weather-tornado
+      - "\U000F059D" # weather-windy
+      - "\U000F059E" # weather-windy-variant
+      - "\U000F1A71" # mdi-snowflake-thermometer
+      - "\U000F05A9" # mdi-wifi
+      - "\U000F0928" # mdi-wifi-strength-4
+      - "\U000F0925" # mdi-wifi-strength-3 
+      - "\U000F0922" # mdi-wifi-strength-2
+      - "\U000F091F" # mdi-wifi-strength-1
+      - "\U000F092B" # mdi-wifi-strength-alert-outline
+      - "\U000F1A41" # mdi gymnastics
+      - "\U000F054B" # mdi umbrella-outline
+      - "\U000F0F29" # mdi snowflake-alert
+      - "\U000F081C" # mdi-door-open
+      - "\U000F05D6" # mdi alert-circle-outline
+      - "\U000F0C84" # mdi food-apple-outline
+      - "\U000F15D6" # mdi book-open-page-variant-outline
+  - file: 'fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_medlarge
+    size: 18
+    glyphs:
+      - "\U000F05A9" # mdi-wifi
+      - "\U000F0928" # mdi-wifi-strength-4
+      - "\U000F0925" # mdi-wifi-strength-3 
+      - "\U000F0922" # mdi-wifi-strength-2
+      - "\U000F091F" # mdi-wifi-strength-1
+      - "\U000F092B" # mdi-wifi-strength-alert-outline
+      - "\U000F054B" # mdi umbrella-outline
+      - "\U000F0F29" # mdi snowflake-alert
+      - "\U000F0535" # mdi trending-up
+      - "\U000F0533" # mdi trending-down
+      - "\U000F05D6" # mdi alert-circle-outline 
+  - file: 'fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_medium
+    size: 36
+    glyphs: *mdi-weather-glyphs
+
+
+
+
+sensor:
+
+
+  # Create sensors for monitoring Weatherman remotely.
+  - platform: template
+    name: "Weatherman - Display Last Update"
+    device_class: timestamp
+    entity_category: "diagnostic"
+    id: display_last_update
+    
+  - platform: template
+    name: "Weatherman - Recorded Display Refresh"
+    accuracy_decimals: 0
+    unit_of_measurement: "Refreshes"
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: 'return id(recorded_display_refresh);'
+  
+  - platform: wifi_signal
+    name: "Weatherman - WiFi Signal Strength"
+    id: wifisignal
+    unit_of_measurement: "dBm"
+    entity_category: "diagnostic"
+    update_interval: 60s
+
+# Call Weather sensors from HA.
+
+  - platform: homeassistant
+    entity_id: weather.alison_way
+    attribute: temperature
+    id: weather_temperature
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  # Daily forecast sensors from Home Assistant
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_today_high
+    id: forecast_today_high
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_today_low
+    id: forecast_today_low
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_tomorrow_high
+    id: forecast_tomorrow_high
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_tomorrow_low
+    id: forecast_tomorrow_low
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_day3_high
+    id: forecast_day3_high
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_day3_low
+    id: forecast_day3_low
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  # Precipitation probability
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_today_precipitation
+    id: forecast_today_precip
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_tomorrow_precipitation
+    id: forecast_tomorrow_precip
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_day3_precipitation
+    id: forecast_day3_precip
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+
+## WiFi signl from ESP32 service
+  - platform: wifi_signal
+    name: "WiFi Signal Sensor"
+    update_interval: 60s
+
+text_sensor:
+  - platform: homeassistant
+    name: weather_condition
+    entity_id: weather.alison_way
+    id: weather_condition
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_today_condition
+    id: forecast_today_condition
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_tomorrow_condition
+    id: forecast_tomorrow_condition
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_day3_condition
+    id: forecast_day3_condition
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_tomorrow_name
+    id: forecast_tomorrow_name
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weather_forecast_day3_name
+    id: forecast_day3_name
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  # Calendar events - will need template sensors in HA that provide event list
+  - platform: homeassistant
+    entity_id: sensor.today_events_list
+    id: today_events
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.tomorrow_events_list
+    id: tomorrow_events
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  # Weather alerts (up to 5 alerts)
+  - platform: homeassistant
+    entity_id: sensor.weatheralerts_1
+    id: weather_alerts_count
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weatheralerts_1_alert_1_most_recent_active_alert
+    id: weather_alert_1
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weatheralerts_1_alert_2_most_recent_active_alert
+    id: weather_alert_2
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weatheralerts_1_alert_3_most_recent_active_alert
+    id: weather_alert_3
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weatheralerts_1_alert_4_most_recent_active_alert
+    id: weather_alert_4
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;'
+
+  - platform: homeassistant
+    entity_id: sensor.weatheralerts_1_alert_5_most_recent_active_alert
+    id: weather_alert_5
+    on_value:
+      then:
+        - lambda: 'id(data_updated) = true;' 
+
+
+
+
+# Pins for Waveshare ePaper ESP Board
+spi:
+  clk_pin: GPIO13
+  mosi_pin: GPIO14
+
+
+# Now render everything on the ePaper screen.
+display:
+  - platform: waveshare_epaper
+    id: eink_display
+    cs_pin: GPIO15
+    dc_pin: GPIO27
+    busy_pin: GPIO25
+    reset_pin: GPIO26
+    reset_duration: 2ms
+    model: 7.50in-bV3-bwr
+    update_interval: never
+    rotation: 90°
+    lambda: |-
+      // Map weather states to MDI characters.
+      std::map<std::string, std::string> weather_icon_map
+        {
+          {"cloudy", "\U000F0590"},
+          {"cloudy-alert", "\U000F0F2F"},
+          {"cloudy-arrow-right", "\U000F0E6E"},
+          {"fog", "\U000F0591"},
+          {"hail", "\U000F0592"},
+          {"hazy", "\U000F0F30"},
+          {"hurricane", "\U000F0898"},
+          {"lightning", "\U000F0593"},
+          {"lightning-rainy", "\U000F067E"},
+          {"night", "\U000F0594"},
+          {"night-partly-cloudy", "\U000F0F31"},
+          {"partlycloudy", "\U000F0595"},
+          {"partly-lightning", "\U000F0F32"},
+          {"partly-rainy", "\U000F0F33"},
+          {"partly-snowy", "\U000F0F34"},
+          {"partly-snowy-rainy", "\U000F0F35"},
+          {"pouring", "\U000F0596"},
+          {"rainy", "\U000F0597"},
+          {"snowy", "\U000F0598"},
+          {"snowy-heavy", "\U000F0F36"},
+          {"snowy-rainy", "\U000F067F"},
+          {"sunny", "\U000F0599"},
+          {"sunny-alert", "\U000F0F37"},
+          {"sunny-off", "\U000F14E4"},
+          {"sunset", "\U000F059A"},
+          {"sunset-down", "\U000F059B"},
+          {"sunset-up", "\U000F059C"},
+          {"tornado", "\U000F0F38"},
+          {"windy", "\U000F059D"},
+          {"windy-variant", "\U000F059E"},
+        };
+        
+      const auto RED = Color(255,0,0,0);
+
+
+      //# Print loading screen before data is received.
+      if (id(initial_data_received) == false) {
+        it.printf(400, 84, id(font_title), TextAlign::TOP_CENTER, "LOADING");
+      } else {
+
+      //# Dynamic Layout Constants
+        // Display is 480x800 (rotated 90°)
+        const int SCREEN_WIDTH = 480;
+        const int SCREEN_HEIGHT = 800;
+
+        // Top section (current weather)
+        const int TOP_MARGIN = 20;
+        const int DAY_Y = TOP_MARGIN;
+        const int DATE_Y = DAY_Y + 60;
+        const int ICON_Y = DATE_Y + 60;
+        const int TEMP_Y = ICON_Y + 100;
+
+        // Weather alert (dynamic height based on alert presence)
+        const int ALERT_Y = TEMP_Y + 35;
+        const int ALERT_BASE_HEIGHT = 25;
+        const int ALERT_SPACING = 2;
+
+        // Calculate total alert height based on number of active alerts
+        int active_alert_count = 0;
+        int total_alert_height = 0;
+
+        // Check how many alerts are active
+        if (id(weather_alert_1).has_state()) {
+          std::string title = id(weather_alert_1).state;
+          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
+            active_alert_count++;
+          }
+        }
+        if (id(weather_alert_2).has_state()) {
+          std::string title = id(weather_alert_2).state;
+          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
+            active_alert_count++;
+          }
+        }
+        if (id(weather_alert_3).has_state()) {
+          std::string title = id(weather_alert_3).state;
+          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
+            active_alert_count++;
+          }
+        }
+        if (id(weather_alert_4).has_state()) {
+          std::string title = id(weather_alert_4).state;
+          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
+            active_alert_count++;
+          }
+        }
+        if (id(weather_alert_5).has_state()) {
+          std::string title = id(weather_alert_5).state;
+          if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
+            active_alert_count++;
+          }
+        }
+
+        // Calculate total height: each alert gets base height + spacing
+        if (active_alert_count > 0) {
+          total_alert_height = (active_alert_count * ALERT_BASE_HEIGHT) + ((active_alert_count - 1) * ALERT_SPACING);
+        }
+
+        // Forecast section (dynamically positioned after alert)
+        const int FORECAST_DIVIDER_Y = ALERT_Y + (total_alert_height > 0 ? total_alert_height + 5 : 0);
+        const int FORECAST_TITLE_Y = FORECAST_DIVIDER_Y + 10;
+        const int FORECAST_DAY_Y = FORECAST_TITLE_Y + 30;
+        const int FORECAST_ICON_Y = FORECAST_DAY_Y + 20;
+        const int FORECAST_HIGH_Y = FORECAST_ICON_Y + 50;
+        const int FORECAST_LOW_Y = FORECAST_HIGH_Y + 20;
+        const int FORECAST_PRECIP_Y = FORECAST_LOW_Y + 18;
+
+        // Events section
+        const int EVENTS_DIVIDER_Y = FORECAST_PRECIP_Y + 25;
+        const int EVENTS_TITLE_Y = EVENTS_DIVIDER_Y + 10;
+        const int EVENTS_START_Y = EVENTS_TITLE_Y + 30;
+        const int EVENT_LINE_HEIGHT = 22;
+        const int MAX_TOTAL_EVENTS = 10;  // Total events to show across both days
+
+        // Footer
+        const int FOOTER_Y = SCREEN_HEIGHT - 25;
+
+      //# Print Weather Section
+        App.feed_wdt();  // Feed watchdog at start of weather section
+        it.strftime(240, DAY_Y, id(font_title), TextAlign::TOP_CENTER, "%a",  id(homeassistant_time).now());
+        it.strftime(240, DATE_Y, id(font_title), TextAlign::TOP_CENTER, "%b %d", id(homeassistant_time).now());
+
+        // Current weather icon with error handling
+        if (id(weather_condition).has_state() && weather_icon_map.count(id(weather_condition).state.c_str()) > 0) {
+          it.printf(240, ICON_Y, id(font_mdi_large), TextAlign::TOP_CENTER, "%s", weather_icon_map[id(weather_condition).state.c_str()].c_str());
+        } else {
+          it.printf(240, ICON_Y, id(font_mdi_large), TextAlign::TOP_CENTER, "?");
+        }
+
+        // Current temperature with error handling
+        if (id(weather_temperature).has_state() && !isnan(id(weather_temperature).state)) {
+          it.printf(240, TEMP_Y, id(font_medium_bold), TextAlign::TOP_CENTER, "%.1f °F", id(weather_temperature).state);
+        } else {
+          it.printf(240, TEMP_Y, id(font_medium_bold), TextAlign::TOP_CENTER, "--- °F");
+        }
+
+      //# Print Weather Alerts (multiple if active)
+        App.feed_wdt();  // Feed watchdog before alerts section
+        if (active_alert_count > 0) {
+          int alert_y_pos = ALERT_Y;
+
+          // Helper lambda to draw an alert
+          auto draw_alert = [&](esphome::text_sensor::TextSensor* alert_sensor) {
+            if (alert_sensor->has_state()) {
+              std::string title = alert_sensor->state;
+              if (title.length() > 0 && title != "unavailable" && title != "unknown" && title != "") {
+                App.feed_wdt();  // Feed watchdog
+
+                // Display alert banner in red
+                it.filled_rectangle(60, alert_y_pos, 360, ALERT_BASE_HEIGHT, RED);
+
+                // Draw alert icon on the left
+                it.printf(80, alert_y_pos + (ALERT_BASE_HEIGHT / 2) - 9, id(font_mdi_medlarge), COLOR_OFF, TextAlign::TOP_LEFT, "\U000F05D6");
+
+                // Draw alert text - white text on red background
+                it.printf(105, alert_y_pos + (ALERT_BASE_HEIGHT / 2) - 9, id(font_small_bold), COLOR_OFF, TextAlign::TOP_LEFT, "%s", title.c_str());
+
+                // Move to next alert position
+                alert_y_pos += ALERT_BASE_HEIGHT + ALERT_SPACING;
+              }
+            }
+          };
+
+          // Draw all active alerts
+          draw_alert(id(weather_alert_1));
+          draw_alert(id(weather_alert_2));
+          draw_alert(id(weather_alert_3));
+          draw_alert(id(weather_alert_4));
+          draw_alert(id(weather_alert_5));
+        }
+
+      //# Print 3-Day Forecast Section
+        App.feed_wdt();  // Feed watchdog before forecast section
+        it.line(60, FORECAST_DIVIDER_Y, 420, FORECAST_DIVIDER_Y);  // Horizontal divider
+        it.printf(240, FORECAST_TITLE_Y, id(font_small_bold), TextAlign::TOP_CENTER, "3-DAY FORECAST");
+
+        // Today's forecast
+        it.printf(120, FORECAST_DAY_Y, id(font_small_bold), TextAlign::TOP_CENTER, "Today");
+        if (id(forecast_today_condition).has_state() && weather_icon_map.count(id(forecast_today_condition).state.c_str()) > 0) {
+          it.printf(120, FORECAST_ICON_Y, id(font_mdi_medium), TextAlign::TOP_CENTER, "%s",
+            weather_icon_map[id(forecast_today_condition).state.c_str()].c_str());
+        } else {
+          it.printf(120, FORECAST_ICON_Y, id(font_mdi_medium), TextAlign::TOP_CENTER, "?");
+        }
+        if (id(forecast_today_high).has_state() && !isnan(id(forecast_today_high).state)) {
+          it.printf(120, FORECAST_HIGH_Y, id(font_small_bold), TextAlign::TOP_CENTER, "%.0f°", id(forecast_today_high).state);
+        } else {
+          it.printf(120, FORECAST_HIGH_Y, id(font_small_bold), TextAlign::TOP_CENTER, "--");
+        }
+        if (id(forecast_today_low).has_state() && !isnan(id(forecast_today_low).state)) {
+          it.printf(120, FORECAST_LOW_Y, id(font_small_book), TextAlign::TOP_CENTER, "%.0f°", id(forecast_today_low).state);
+        } else {
+          it.printf(120, FORECAST_LOW_Y, id(font_small_book), TextAlign::TOP_CENTER, "--");
+        }
+        if (id(forecast_today_precip).has_state() && !isnan(id(forecast_today_precip).state) && id(forecast_today_precip).state > 0) {
+          it.printf(120, FORECAST_PRECIP_Y, id(font_small_book), TextAlign::TOP_CENTER, "%.0f%%", id(forecast_today_precip).state);
+        }
+
+        // Tomorrow's forecast
+        if (id(forecast_tomorrow_name).has_state()) {
+          it.printf(240, FORECAST_DAY_Y, id(font_small_bold), TextAlign::TOP_CENTER, "%s", id(forecast_tomorrow_name).state.c_str());
+        } else {
+          it.printf(240, FORECAST_DAY_Y, id(font_small_bold), TextAlign::TOP_CENTER, "---");
+        }
+        if (id(forecast_tomorrow_condition).has_state() && weather_icon_map.count(id(forecast_tomorrow_condition).state.c_str()) > 0) {
+          it.printf(240, FORECAST_ICON_Y, id(font_mdi_medium), TextAlign::TOP_CENTER, "%s",
+            weather_icon_map[id(forecast_tomorrow_condition).state.c_str()].c_str());
+        } else {
+          it.printf(240, FORECAST_ICON_Y, id(font_mdi_medium), TextAlign::TOP_CENTER, "?");
+        }
+        if (id(forecast_tomorrow_high).has_state() && !isnan(id(forecast_tomorrow_high).state)) {
+          it.printf(240, FORECAST_HIGH_Y, id(font_small_bold), TextAlign::TOP_CENTER, "%.0f°", id(forecast_tomorrow_high).state);
+        } else {
+          it.printf(240, FORECAST_HIGH_Y, id(font_small_bold), TextAlign::TOP_CENTER, "--");
+        }
+        if (id(forecast_tomorrow_low).has_state() && !isnan(id(forecast_tomorrow_low).state)) {
+          it.printf(240, FORECAST_LOW_Y, id(font_small_book), TextAlign::TOP_CENTER, "%.0f°", id(forecast_tomorrow_low).state);
+        } else {
+          it.printf(240, FORECAST_LOW_Y, id(font_small_book), TextAlign::TOP_CENTER, "--");
+        }
+        if (id(forecast_tomorrow_precip).has_state() && !isnan(id(forecast_tomorrow_precip).state) && id(forecast_tomorrow_precip).state > 0) {
+          it.printf(240, FORECAST_PRECIP_Y, id(font_small_book), TextAlign::TOP_CENTER, "%.0f%%", id(forecast_tomorrow_precip).state);
+        }
+
+        // Day 3 forecast
+        if (id(forecast_day3_name).has_state()) {
+          it.printf(360, FORECAST_DAY_Y, id(font_small_bold), TextAlign::TOP_CENTER, "%s", id(forecast_day3_name).state.c_str());
+        } else {
+          it.printf(360, FORECAST_DAY_Y, id(font_small_bold), TextAlign::TOP_CENTER, "---");
+        }
+        if (id(forecast_day3_condition).has_state() && weather_icon_map.count(id(forecast_day3_condition).state.c_str()) > 0) {
+          it.printf(360, FORECAST_ICON_Y, id(font_mdi_medium), TextAlign::TOP_CENTER, "%s",
+            weather_icon_map[id(forecast_day3_condition).state.c_str()].c_str());
+        } else {
+          it.printf(360, FORECAST_ICON_Y, id(font_mdi_medium), TextAlign::TOP_CENTER, "?");
+        }
+        if (id(forecast_day3_high).has_state() && !isnan(id(forecast_day3_high).state)) {
+          it.printf(360, FORECAST_HIGH_Y, id(font_small_bold), TextAlign::TOP_CENTER, "%.0f°", id(forecast_day3_high).state);
+        } else {
+          it.printf(360, FORECAST_HIGH_Y, id(font_small_bold), TextAlign::TOP_CENTER, "--");
+        }
+        if (id(forecast_day3_low).has_state() && !isnan(id(forecast_day3_low).state)) {
+          it.printf(360, FORECAST_LOW_Y, id(font_small_book), TextAlign::TOP_CENTER, "%.0f°", id(forecast_day3_low).state);
+        } else {
+          it.printf(360, FORECAST_LOW_Y, id(font_small_book), TextAlign::TOP_CENTER, "--");
+        }
+        if (id(forecast_day3_precip).has_state() && !isnan(id(forecast_day3_precip).state) && id(forecast_day3_precip).state > 0) {
+          it.printf(360, FORECAST_PRECIP_Y, id(font_small_book), TextAlign::TOP_CENTER, "%.0f%%", id(forecast_day3_precip).state);
+        }
+
+      //# Print Calendar Events Section
+        App.feed_wdt();  // Feed watchdog before events section
+        it.line(60, EVENTS_DIVIDER_Y, 420, EVENTS_DIVIDER_Y);  // Horizontal divider
+
+        int event_y = EVENTS_TITLE_Y;
+        int total_event_count = 0;
+
+        // Today's Events
+        it.printf(240, event_y, id(font_small_bold), TextAlign::TOP_CENTER, "TODAY");
+        event_y += 25;
+
+        int today_count = 0;
+        if (id(today_events).has_state()) {
+          const std::string& events_str = id(today_events).state;  // Use const reference to avoid copy
+
+          if (events_str.length() > 0 && events_str != "No events") {
+            size_t start = 0;
+
+            while (today_count < 5 && total_event_count < MAX_TOTAL_EVENTS && start < events_str.length()) {
+              App.feed_wdt();  // Feed watchdog to prevent timeout
+
+              size_t pos = events_str.find('|', start);  // Use char instead of string
+              size_t end = (pos != std::string::npos) ? pos : events_str.length();
+
+              if (end > start) {
+                // Create substring only once
+                std::string event(events_str, start, end - start);
+                it.printf(70, event_y, id(font_small_book), TextAlign::TOP_LEFT, "%s", event.c_str());
+                event_y += EVENT_LINE_HEIGHT;
+                today_count++;
+                total_event_count++;
+              }
+
+              start = (pos != std::string::npos) ? pos + 1 : events_str.length();
+            }
+          }
+        }
+
+        // Show "No events today" if no today events
+        if (today_count == 0) {
+          it.printf(70, event_y, id(font_small_book), TextAlign::TOP_LEFT, "No events");
+          event_y += EVENT_LINE_HEIGHT;
+        }
+
+        // Add spacing before tomorrow's events
+        event_y += 5;
+
+        // Tomorrow's Events
+        if (total_event_count < MAX_TOTAL_EVENTS) {
+          it.printf(240, event_y, id(font_small_bold), TextAlign::TOP_CENTER, "TOMORROW");
+          event_y += 25;
+
+          int tomorrow_count = 0;
+          if (id(tomorrow_events).has_state()) {
+            const std::string& events_str = id(tomorrow_events).state;  // Use const reference to avoid copy
+
+            if (events_str.length() > 0 && events_str != "No events") {
+              size_t start = 0;
+
+              while (tomorrow_count < 5 && total_event_count < MAX_TOTAL_EVENTS && start < events_str.length()) {
+                App.feed_wdt();  // Feed watchdog to prevent timeout
+
+                size_t pos = events_str.find('|', start);  // Use char instead of string
+                size_t end = (pos != std::string::npos) ? pos : events_str.length();
+
+                if (end > start) {
+                  // Create substring only once
+                  std::string event(events_str, start, end - start);
+                  it.printf(70, event_y, id(font_small_book), TextAlign::TOP_LEFT, "%s", event.c_str());
+                  event_y += EVENT_LINE_HEIGHT;
+                  tomorrow_count++;
+                  total_event_count++;
+                }
+
+                start = (pos != std::string::npos) ? pos + 1 : events_str.length();
+              }
+            }
+          }
+
+          // Show "No events tomorrow" if no tomorrow events
+          if (tomorrow_count == 0) {
+            it.printf(70, event_y, id(font_small_book), TextAlign::TOP_LEFT, "No events");
+          }
+        }
+
+      //# Print update timestamp
+        // Refresh Timestamp
+        // Code by EnsconcE from https://community.home-assistant.io/t/esphome-show-time/348903
+        char str[17];
+        time_t currTime = id(homeassistant_time).now().timestamp;
+        strftime(str, sizeof(str), "%H:%M", localtime(&currTime));
+        it.printf(300, FOOTER_Y, id(font_small_book), TextAlign::TOP_CENTER, "Last updated:  %s", str);
+      }
+
+captive_portal:
